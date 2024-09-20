@@ -1,3 +1,6 @@
 package com.adamford.eng.ui
 
-data object DogModel
+data class DogModel(
+    val loading: Boolean = false,
+    val randomDogImageUrl: String? = null,
+)

@@ -20,19 +20,36 @@ class DogViewModel @Inject constructor(private val dogRepository: DogRepository)
     private val _uiState = MutableStateFlow(DogModel())
     val uiState: StateFlow<DogModel> = _uiState.asStateFlow()
 
-    fun fetchRaceSummaries() {
+    init {
+        fetchRaceSummaries()
+    }
+
+    private fun fetchRaceSummaries() {
         viewModelScope.launch {
             _uiState.update { dogModel ->
                 dogModel.copy(loading = true)
             }
-            dogRepository.getRandomDogImage()
+            dogRepository.getRandomDogBreed()
                 .flowOn(Dispatchers.IO)
                 .catch { e ->
                     //Todo: Add error state
                 }
-                .collect {
-                    _uiState.update { dogModel ->
-                        dogModel.copy(loading = false, randomDogImageUrl = it)
+                .collect { breed ->
+                    breed?.let {
+                        dogRepository.getRandomDogImage(breed)
+                            .flowOn(Dispatchers.IO)
+                            .catch { e ->
+                                //Todo: Add error state
+                            }
+                            .collect {
+                                _uiState.update { dogModel ->
+                                    dogModel.copy(
+                                        loading = false,
+                                        randomDogImageUrl = it,
+                                        breed = breed
+                                    )
+                                }
+                            }
                     }
                 }
         }

@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 interface DogServiceHelper {
     fun getRandomDogImage(): Flow<String>
 
-    fun getRandomDogImage(breed: String): Flow<String>
+    fun getRandomDogImage(options: List<String>, breed: String): Flow<DogImage>
 
-    fun getRandomDogBreed(): Flow<String?>
+    fun getDogBreeds(): Flow<List<String>>
 }

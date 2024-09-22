@@ -18,24 +18,20 @@ class DogRepository @Inject constructor(private val dogService: DogService) :
         emit(response.message)
     }
 
-    override fun getRandomDogImage(breed: String): Flow<String>  = flow {
+    override fun getRandomDogImage(options: List<String>, breed: String): Flow<DogImage>  = flow {
         val response = dogService.getRandomDogImage(breed)
-        emit(response.message)
+        emit(DogImage(breed = breed, options = options, url = response.message))
     }
 
-    override fun getRandomDogBreed(): Flow<String?>  = flow {
+    override fun getDogBreeds(): Flow<List<String>>  = flow {
         if (dogBreeds.isEmpty()) {
             val response = dogService.getDogBreeds()
             dogBreedsMutex.withLock {
-                dogBreeds = response.message.keys.toList().minus(Companion.MIX_KEY)
+                dogBreeds = response.message.keys.toList()
             }
         }
         dogBreedsMutex.withLock {
-            emit(dogBreeds.randomOrNull())
+            emit(dogBreeds)
         }
-    }
-
-    companion object {
-        private const val MIX_KEY = "mix"
     }
 }

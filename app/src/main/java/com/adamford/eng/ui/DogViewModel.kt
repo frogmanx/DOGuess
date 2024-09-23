@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class DogViewModel @Inject constructor(private val dogRepository: DogRepository) : ViewModel() {
+open class DogViewModel @Inject constructor(private val dogRepository: DogRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DogModel())
     val uiState: StateFlow<DogModel> = _uiState.asStateFlow()

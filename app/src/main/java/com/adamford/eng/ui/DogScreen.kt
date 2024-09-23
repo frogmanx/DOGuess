@@ -1,6 +1,9 @@
 package com.adamford.eng.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -20,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,33 +33,40 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.adamford.eng.R
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DogGuess(viewModel: DogViewModel) {
     val dogModel by viewModel.uiState.collectAsState()
-    var guess by remember { mutableStateOf("") }
 
     // State for showing feedback
-    var showFeedback by remember { mutableStateOf(false) }
+    var selectedOption by remember { mutableStateOf<String?>(null) }
     var isGuessCorrect by remember { mutableStateOf(false) }
-
-    // State to prevent multiple selections
-    var isOptionSelected by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dog Breed Guessing Game") }
+                title = { Text("Dog Breed Guessing Game") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { innerPadding ->
@@ -65,13 +76,17 @@ fun DogGuess(viewModel: DogViewModel) {
                 Text(
                     text = errorMessage,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp)
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(dimensionResource(id = R.dimen.spacing_2)),
+                    textAlign = TextAlign.Center
                 )
             } else {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(dimensionResource(id = R.dimen.spacing_2)),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     DogImage(
@@ -79,41 +94,30 @@ fun DogGuess(viewModel: DogViewModel) {
                         contentDescription = "Random Dog Image",
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacing_3)))
 
-                    AnimatedVisibility(visible = showFeedback) {
-                        Text(
-                            text = if (isGuessCorrect) "Correct!" else "Wrong!",
-                            color = if (isGuessCorrect) Color(0xFF4CAF50) else Color(0xFFF44336),
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-
-                    if (dogModel.options.isNotEmpty() && !isOptionSelected) {
+                    // Multiple-Choice Options
+                    if (dogModel.options.isNotEmpty()) {
                         OptionsList(
                             options = dogModel.options,
-                            onOptionSelected = { selectedOption ->
-                                isGuessCorrect = viewModel.checkGuess(selectedOption)
-                                showFeedback = true
-                                isOptionSelected = true
+                            selectedOption = selectedOption,
+                            isGuessCorrect = isGuessCorrect,
+                            onOptionSelected = { option ->
+                                if (selectedOption == null) { // Prevent multiple selections
+                                    selectedOption = option
+                                    isGuessCorrect = viewModel.checkGuess(option)
+                                }
                             }
                         )
                     }
 
-                    // Handle feedback delay and next round
-                    LaunchedEffect(showFeedback) {
-                        if (showFeedback) {
+                    // Handle delay and next round
+                    LaunchedEffect(selectedOption) {
+                        selectedOption?.let {
                             delay(2000)
-                            showFeedback = false
-                            if (isGuessCorrect) {
-                                viewModel.nextRound()
-                                isOptionSelected = false
-                            } else {
-                                // For simplicity, we'll proceed to the next round
-                                viewModel.nextRound()
-                                isOptionSelected = false
-                            }
+                            viewModel.nextRound()
+                            selectedOption = null
+                            isGuessCorrect = false
                         }
                     }
                 }
@@ -125,17 +129,24 @@ fun DogGuess(viewModel: DogViewModel) {
 @Composable
 fun OptionsList(
     options: List<String>,
+    selectedOption: String?,
+    isGuessCorrect: Boolean,
     onOptionSelected: (String) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
         options.forEach { option ->
+            val isSelected = selectedOption == option
+            val isCorrect = if (isSelected) isGuessCorrect else false
+
             OptionItem(
                 optionText = option,
+                isSelected = isSelected,
+                isCorrect = isCorrect,
                 onOptionSelected = onOptionSelected
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacing_1)))
         }
     }
 }
@@ -143,19 +154,37 @@ fun OptionsList(
 @Composable
 fun OptionItem(
     optionText: String,
+    isSelected: Boolean,
+    isCorrect: Boolean,
     onOptionSelected: (String) -> Unit
 ) {
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            isSelected && isCorrect -> colorResource(id = R.color.correct_guess)
+            isSelected && !isCorrect -> colorResource(id = R.color.incorrect_guess)
+            else -> MaterialTheme.colorScheme.surface
+        },
+        animationSpec = tween(durationMillis = 300)
+    )
+    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onOptionSelected(optionText) },
+            .clickable(enabled = !isSelected) { onOptionSelected(optionText) },
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor
+        ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = 4.dp
-        )
+            defaultElevation = dimensionResource(id = R.dimen.elevation)
+        ),
+        shape = RoundedCornerShape(dimensionResource(id = R.dimen.spacing_1))
     ) {
         Text(
             text = optionText,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .padding(dimensionResource(id = R.dimen.spacing_2))
+                .fillMaxWidth(),
             style = MaterialTheme.typography.bodyLarge
         )
     }
@@ -166,7 +195,7 @@ fun DogImage(
     imageUrl: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    cornerRadius: Int = 16,
+    cornerRadius: Dp = dimensionResource(id = R.dimen.spacing_2),
     backgroundColor: Color = MaterialTheme.colorScheme.background,
 ) {
     val configuration = LocalConfiguration.current
@@ -175,8 +204,8 @@ fun DogImage(
     Box(
         modifier = modifier
             .size(screenWidth, screenWidth)
-            .background(color = backgroundColor, shape = RoundedCornerShape(cornerRadius.dp))
-            .clip(RoundedCornerShape(cornerRadius.dp)),
+            .background(color = backgroundColor, shape = RoundedCornerShape(cornerRadius))
+            .clip(RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center,
     ) {
         if (imageUrl != null) {
@@ -186,14 +215,13 @@ fun DogImage(
                     .crossfade(true)
                     .build(),
                 contentDescription = contentDescription,
-                contentScale = ContentScale.Crop, // Crop to fill the square
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
             )
         } else {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacing_2)))
             CircularProgressIndicator()
         }
     }
-
 }

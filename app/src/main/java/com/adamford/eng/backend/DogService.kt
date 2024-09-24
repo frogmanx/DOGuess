@@ -5,9 +5,6 @@ import retrofit2.http.Path
 
 interface DogService {
 
-    @GET("/api/breeds/image/random")
-    suspend fun getRandomDogImage(): RandomDog
-
     @GET("/api/breed/{breed}/images/random")
     suspend fun getRandomDogImage(@Path("breed") breed: String): RandomDog
 

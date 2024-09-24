@@ -124,7 +124,7 @@ fun DogGuessView(
                         .padding(dimensionResource(id = R.dimen.spacing_2)),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    DogImage(
+                    DogImageView(
                         imageUrl = dogModel.randomDogImageUrl,
                         contentDescription = "Random Dog Image",
                     )
@@ -211,7 +211,7 @@ fun OptionItem(
 }
 
 @Composable
-fun DogImage(
+fun DogImageView(
     imageUrl: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,

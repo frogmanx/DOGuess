@@ -2,6 +2,7 @@ package com.adamford.eng.di
 
 import com.adamford.eng.backend.DogRepository
 import com.adamford.eng.backend.DogService
+import com.adamford.eng.backend.IDogRepository
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -34,7 +35,7 @@ object DogModule {
     @Provides
     fun provideDogRepository(
         dogService: DogService
-    ): DogRepository {
+    ): IDogRepository {
         return DogRepository(dogService)
     }
 }

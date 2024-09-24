@@ -1,9 +1,11 @@
 package com.adamford.eng.ui
 
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adamford.eng.backend.DogImage
 import com.adamford.eng.backend.DogRepository
+import com.adamford.eng.backend.IDogRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,9 +23,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-open class DogViewModel @Inject constructor(private val dogRepository: DogRepository) : ViewModel() {
+open class DogViewModel @Inject constructor(private val dogRepository: IDogRepository) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(DogModel())
+    @VisibleForTesting val _uiState = MutableStateFlow(DogModel())
     val uiState: StateFlow<DogModel> = _uiState.asStateFlow()
 
     init {

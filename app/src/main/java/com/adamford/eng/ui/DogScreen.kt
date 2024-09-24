@@ -265,13 +265,11 @@ fun Loading() {
 
 @Composable
 fun DogError(modifier: Modifier, errorMessage: String, onRetryClick: () -> Unit) {
-
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
             Text(
                 text = errorMessage,
                 modifier = modifier,

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -32,16 +33,21 @@ open class DogViewModel @Inject constructor(private val dogRepository: DogReposi
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun fetchRaceSummaries() {
         viewModelScope.launch {
-            _uiState.update { dogModel ->
-                dogModel.copy(loading = true)
-            }
             dogRepository.getDogBreeds()
                 .flowOn(Dispatchers.IO)
-                .catch { e ->
-                    //Todo: Add error state
-                }
                 .filter { it.isNotEmpty() }
                 .flatMapLatest { fetchRandomImageAndGenerateOptions(breeds = it) }
+                .onStart {
+                    _uiState.update { it.copy(loading = true, errorMessage = null) }
+                }
+                .catch { e ->
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            errorMessage = e.localizedMessage ?: "An unexpected error occurred"
+                        )
+                    }
+                }
                 .collect { dogImage ->
                     _uiState.update { dogModel ->
                         dogModel.copy(
@@ -49,6 +55,7 @@ open class DogViewModel @Inject constructor(private val dogRepository: DogReposi
                             randomDogImageUrl = dogImage.url,
                             breed = dogImage.breed,
                             options = dogImage.options,
+                            errorMessage = null,
                         )
                     }
                 }
@@ -74,7 +81,12 @@ open class DogViewModel @Inject constructor(private val dogRepository: DogReposi
 
     fun nextRound() {
         _uiState.update { dogModel ->
-            dogModel.copy(errorMessage = null, randomDogImageUrl = null, breed = null)
+            dogModel.copy(
+                errorMessage = null,
+                options = listOf(),
+                randomDogImageUrl = null,
+                breed = null
+            )
         }
         fetchRaceSummaries()
     }

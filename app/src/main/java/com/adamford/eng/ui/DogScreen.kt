@@ -1,8 +1,6 @@
 package com.adamford.eng.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,9 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -33,57 +31,94 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.adamford.eng.R
+import com.airbnb.lottie.RenderMode
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DogGuess(viewModel: DogViewModel) {
     val dogModel by viewModel.uiState.collectAsState()
 
-    // State for showing feedback
     var selectedOption by remember { mutableStateOf<String?>(null) }
     var isGuessCorrect by remember { mutableStateOf(false) }
 
+    DogGuessView(
+        dogModel = dogModel,
+        nextRound = { viewModel.nextRound() },
+        selectedOption = selectedOption,
+        isGuessCorrect = isGuessCorrect
+    ) { option ->
+        if (selectedOption == null) { // Prevent multiple selections
+            selectedOption = option
+            isGuessCorrect = viewModel.checkGuess(option)
+        }
+    }
+    // Handle delay and next round
+    LaunchedEffect(selectedOption) {
+        selectedOption?.let {
+            delay(2000)
+            viewModel.nextRound()
+            selectedOption = null
+            isGuessCorrect = false
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DogGuessView(
+    dogModel: DogModel,
+    nextRound: () -> Unit = {},
+    selectedOption: String? = null,
+    isGuessCorrect: Boolean = false,
+    onGuessSelected: (String) -> Unit = {},
+) {
+    val errorMessage = dogModel.errorMessage
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dog Breed Guessing Game") },
+                title = { Text(stringResource(id = R.string.title)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
                 )
             )
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
-            val errorMessage = dogModel.errorMessage
-            if (errorMessage != null) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyLarge,
+            when  {
+                dogModel.loading -> Loading()
+                errorMessage != null -> DogError(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .padding(dimensionResource(id = R.dimen.spacing_2)),
-                    textAlign = TextAlign.Center
-                )
-            } else {
-                Column(
+                    errorMessage = errorMessage
+                ) { nextRound() }
+                dogModel.randomDogImageUrl == null -> DogError(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(dimensionResource(id = R.dimen.spacing_2)),
+                    errorMessage = stringResource(id = R.string.image_loading_error)
+                ) { nextRound() }
+                else -> Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(dimensionResource(id = R.dimen.spacing_2)),
@@ -96,30 +131,15 @@ fun DogGuess(viewModel: DogViewModel) {
 
                     Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacing_3)))
 
-                    // Multiple-Choice Options
                     if (dogModel.options.isNotEmpty()) {
                         OptionsList(
                             options = dogModel.options,
                             selectedOption = selectedOption,
                             isGuessCorrect = isGuessCorrect,
-                            onOptionSelected = { option ->
-                                if (selectedOption == null) { // Prevent multiple selections
-                                    selectedOption = option
-                                    isGuessCorrect = viewModel.checkGuess(option)
-                                }
-                            }
+                            onOptionSelected = { option -> onGuessSelected(option) }
                         )
                     }
 
-                    // Handle delay and next round
-                    LaunchedEffect(selectedOption) {
-                        selectedOption?.let {
-                            delay(2000)
-                            viewModel.nextRound()
-                            selectedOption = null
-                            isGuessCorrect = false
-                        }
-                    }
                 }
             }
         }
@@ -162,11 +182,11 @@ fun OptionItem(
         targetValue = when {
             isSelected && isCorrect -> colorResource(id = R.color.correct_guess)
             isSelected && !isCorrect -> colorResource(id = R.color.incorrect_guess)
-            else -> MaterialTheme.colorScheme.surface
+            else -> MaterialTheme.colorScheme.primary
         },
         animationSpec = tween(durationMillis = 300)
     )
-    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onPrimary
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -208,7 +228,6 @@ fun DogImage(
             .clip(RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center,
     ) {
-        if (imageUrl != null) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(imageUrl)
@@ -219,9 +238,50 @@ fun DogImage(
                 modifier = Modifier
                     .fillMaxSize()
             )
-        } else {
-            Spacer(modifier = Modifier.height(dimensionResource(id = R.dimen.spacing_2)))
-            CircularProgressIndicator()
+    }
+}
+
+@Composable
+fun Loading() {
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.small_dog_loading))
+    val progress by animateLottieCompositionAsState(
+        composition,
+        iterations = LottieConstants.IterateForever
+    )
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            modifier = Modifier.size(dimensionResource(id = R.dimen.lottie_animation_size)),
+            renderMode = RenderMode.HARDWARE,
+        )
+    }
+
+}
+
+@Composable
+fun DogError(modifier: Modifier, errorMessage: String, onRetryClick: () -> Unit) {
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
+            Text(
+                text = errorMessage,
+                modifier = modifier,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
+            Button(onClick = onRetryClick) {
+                Text(text = stringResource(id = R.string.retry))
+            }
         }
     }
 }

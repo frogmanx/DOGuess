@@ -6,24 +6,18 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
-class DogRepository @Inject constructor(private val dogService: DogService) :
-    DogServiceHelper {
+class DogRepository @Inject constructor(private val dogService: DogService) {
 
     private val dogBreedsMutex = Mutex()
 
     private var dogBreeds: List<String> = emptyList()
 
-    override fun getRandomDogImage(): Flow<String>  = flow {
-        val response = dogService.getRandomDogImage()
-        emit(response.message)
-    }
-
-    override fun getRandomDogImage(options: List<String>, breed: String): Flow<DogImage>  = flow {
+    fun getRandomDogImage(options: List<String>, breed: String): Flow<DogImage>  = flow {
         val response = dogService.getRandomDogImage(breed)
         emit(DogImage(breed = breed, options = options, url = response.message))
     }
 
-    override fun getDogBreeds(): Flow<List<String>>  = flow {
+    fun getDogBreeds(): Flow<List<String>>  = flow {
         if (dogBreeds.isEmpty()) {
             val response = dogService.getDogBreeds()
             dogBreedsMutex.withLock {

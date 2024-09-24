@@ -4,4 +4,5 @@
     <dimen name="spacing_2">16dp</dimen>
     <dimen name="spacing_3">24dp</dimen>
     <dimen name="elevation">4dp</dimen>
+    <dimen name="lottie_animation_size">200dp</dimen>
 </resources>

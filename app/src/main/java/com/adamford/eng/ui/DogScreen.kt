@@ -2,6 +2,7 @@ package com.adamford.eng.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -38,11 +39,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.adamford.eng.R
 import com.airbnb.lottie.RenderMode
@@ -228,16 +231,22 @@ fun DogImageView(
             .clip(RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center,
     ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(imageUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = contentDescription,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-            )
+        SubcomposeAsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .crossfade(true)
+                .build(),
+            loading = { Box(modifier = Modifier
+                .background(colorResource(id = R.color.transparent_gray))
+                .fillMaxSize()) },
+            error = { Box(modifier = Modifier
+                .background(colorResource(id = R.color.transparent_gray))
+                .fillMaxSize()) },
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+        )
     }
 }
 
